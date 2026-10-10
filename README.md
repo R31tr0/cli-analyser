@@ -1,4 +1,4 @@
-# 🤖 Gemini CLI Code Analyser
+# 🤖  CLI Code Analyser
 
 <p align="center">
   <img src="https://img.shields.io/badge/javascript-F7DF1E?style=flat&logo=javascript&logoColor=black" alt="JavaScript">
@@ -39,6 +39,7 @@
 5. используйте в любом месте системы 
     ```bash
     cli-analyser
+<<<<<<< HEAD
     ```
 
 ## Анализ логов
@@ -51,3 +52,5 @@
 ```
 
 Перед запуском CLI покажет предложенную команду и попросит подтверждение.
+=======
+>>>>>>> 2e730a84cae1b70b5470483328752fc840e0a7b6
