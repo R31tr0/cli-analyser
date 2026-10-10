@@ -249,14 +249,15 @@ async function main() {
       const projectArchitecture = scanProject();
       let terminalLogs = '';
 
-      const command = userQuery.trim().toLowerCase();
-      const isLogsRequest = ['-log', '-logs', '-l'].includes(command);
-      const isFixRequest = ['-fix', '-f'].includes(command);
+      const [commandName] = userQuery.trim().split(/\s+/);
+      const commandOption = commandName.toLowerCase();
+      const isLogsRequest = ['-log', '-logs', '-l'].includes(commandOption);
+      const isFixRequest = ['-fix', '-f'].includes(commandOption);
 
       if (isLogsRequest || isFixRequest) {
-        const command = await suggestRunCommand(projectArchitecture);
+        const runCommand = await suggestRunCommand(projectArchitecture, userQuery);
 
-        console.log(chalk.yellow(`ИИ предлагает перезапустить проект командой:\n\n  ${command}\n`));
+        console.log(chalk.yellow(`ИИ предлагает перезапустить проект командой:\n\n  ${runCommand}\n`));
         console.log(chalk.gray('Команда будет выполнена в текущей папке проекта. Проверь её перед подтверждением.'));
         if (!await confirmCommand()) {
           console.log(chalk.gray('\nЗапуск отменён; команда не выполнялась.\n'));
@@ -265,9 +266,9 @@ async function main() {
 
         console.log(chalk.green('\nЗапускаю проект и собираю вывод (максимум 15 секунд для долгоживущего процесса)...\n'));
 
-        const result = await runCommandAndCollectLogs(command, 15_000);
+        const result = await runCommandAndCollectLogs(runCommand, 15_000);
         terminalLogs = [
-          `Команда: ${command}`,
+          `Команда: ${runCommand}`,
           `Код завершения: ${result.exitCode ?? 'неизвестен'}`,
           result.timedOut ? 'Сбор остановлен по лимиту времени (15 секунд).' : '',
           result.truncated ? 'Показана только последняя часть вывода (лимит хранения: 40 000 символов).' : '',
