@@ -2,6 +2,15 @@ import { GoogleGenAI } from '@google/genai';
 import chalk from 'chalk';
 import { getApiKey } from '../utils/config.js';
 
+export const MODEL_ID = 'gemini-3.5-flash-lite';
+export const MODEL_OPTIONS = [
+  { label: 'Gemini 3.5 Flash Lite', id: MODEL_ID },
+  { label: 'Gemini 3.6 Flash', id: 'gemini-3.6-flash' },
+  { label: 'Gemini 3.1 Flash Lite', id: 'gemini-3.1-flash-lite' },
+  { label: 'Gemini 3.5 Flash', id: 'gemini-3.5-flash' },
+  { label: 'Gemini 3.7 Flash', id: 'gemini-3.7-flash' },
+];
+
 const systemPrompt = `Ты - помощник для разработчиков. 
 Твоя задача - анализировать логи и код, находить причины ошибок и давать советы по устранению проблем.
 в каждом ответе тебе будет дана архитектура проекта и логи с терминала если они 
@@ -14,11 +23,11 @@ const systemPrompt = `Ты - помощник для разработчиков.
 если пользователь вводит -help или -h ты должен вывести список команд которые ты можешь выполнять и краткое описание каждой команды
 если пользователь вводит -scan или -s ты должен проанализировать архитектуру проекта и дать рекомендации по улучшению структуры проекта и кода так же выведи структуру такой какая она сейчас есть перед сообщением 
 если пользователь вводит -log, -logs или -l тулза передаст тебе логи повторного запуска проекта; просто обьясни логи 
-
+если пользователь вводит -model или -m ты должен написать что это команда для выбора модели
 если пользователь вводит -fix или -f тулза передаст тебе логи повторного запуска и структуру проекта; найди причину падения и дай точные шаги исправления, указывая файлы и команды. Не утверждай, что изменил код.
 `;
 
-export async function suggestRunCommand(projectArchitecture, userQuery) {
+export async function suggestRunCommand(projectArchitecture, userQuery, model = MODEL_ID) {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('API key не найден. Сначала нужно настроить ключ Gemini.');
@@ -27,7 +36,7 @@ export async function suggestRunCommand(projectArchitecture, userQuery) {
   try {
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash-lite',
+      model,
       contents: [{
         role: 'user',
         parts: [{
@@ -49,7 +58,7 @@ export async function suggestRunCommand(projectArchitecture, userQuery) {
   }
 }
 
-export async function askgemini(userQuery, projectArchitecture, terminalLogs = '') {
+export async function askgemini(userQuery, projectArchitecture, terminalLogs = '', model = MODEL_ID) {
   const query = String(userQuery ?? '').trim();
 
   if (!query) {
@@ -69,7 +78,7 @@ export async function askgemini(userQuery, projectArchitecture, terminalLogs = '
     const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash-lite',
+      model,
       contents: [
         {
           role: 'user',

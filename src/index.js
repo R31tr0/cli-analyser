@@ -3,7 +3,7 @@ import { hasApiKey } from './utils/config.js';
 import readline from 'node:readline/promises';
 import { fit, strWidth, wrap } from './utils/text.js';
 import { showApiScreen } from './ui/apiscreen.js';
-import { askgemini, suggestRunCommand } from './services/brain.js';
+import { askgemini, MODEL_ID, MODEL_OPTIONS, suggestRunCommand } from './services/brain.js';
 import { scanProject } from './utils/scanner.js';
 import { runCommandAndCollectLogs } from './utils/logscanner.js';
 import chalk from 'chalk';
@@ -234,6 +234,8 @@ async function main() {
 
   console.clear();
 
+  let currentModel = MODEL_ID;
+
   while (true) {
     const color = randomColor();
     const userQuery = await readInBox(color);
@@ -243,8 +245,37 @@ async function main() {
       continue;
     }
 
-    console.log(chalk.green(`\n  думаем : "${userQuery}"...\n`));
+    const modelCommand = userQuery.trim().match(/^(?:-m|-model)(?:\s+(.+))?$/i);
+    if (modelCommand) {
+      const requestedModel = modelCommand[1]?.trim().toLowerCase();
 
+      if (!requestedModel) {
+        console.log(chalk.yellow(`\nТекущая модель: ${currentModel}`));
+        console.log(chalk.yellow('Выберите модель:'));
+        for (const option of MODEL_OPTIONS) {
+          console.log(chalk.yellow(`  ${option.label} (${option.id})`));
+        }
+        console.log(chalk.gray('\n Введите -m <название или ID модели> для выбора.\n'));
+         console.log(chalk.gray(' у каждой модели есть свои лимиты и характеристики увидеть их вы можете на сайте .'));
+          console.log(chalk.gray('https://aistudio.google.com/rate-limit'));
+        continue;
+      }
+
+      const selectedModel = MODEL_OPTIONS.find((option) =>
+        option.label.toLowerCase() === requestedModel || option.id === requestedModel
+      );
+
+      if (!selectedModel) {
+        console.log(chalk.red(`\nНеизвестная модель: ${modelCommand[1]}. Используйте -m, чтобы увидеть список моделей.\n`));
+        continue;
+      }
+
+      currentModel = selectedModel.id;
+      console.log(chalk.green(`\nВыбрана модель: ${selectedModel.label} (${currentModel})\n`));
+      continue;
+    }
+
+    console.log(chalk.green(`\n  думаем : "${userQuery}"...\n`));
     try {
       const projectArchitecture = scanProject();
       let terminalLogs = '';
@@ -255,7 +286,7 @@ async function main() {
       const isFixRequest = ['-fix', '-f'].includes(commandOption);
 
       if (isLogsRequest || isFixRequest) {
-        const runCommand = await suggestRunCommand(projectArchitecture, userQuery);
+        const runCommand = await suggestRunCommand(projectArchitecture, userQuery, currentModel);
 
         console.log(chalk.yellow(`ИИ предлагает перезапустить проект командой:\n\n  ${runCommand}\n`));
         console.log(chalk.gray('Команда будет выполнена в текущей папке проекта. Проверь её перед подтверждением.'));
@@ -279,7 +310,7 @@ async function main() {
       const request = isFixRequest
         ? 'Проанализируй логи повторного запуска и структуру проекта. Если приложение падает или команда завершается с ошибкой, найди первопричину и дай конкретные шаги, как исправить её, с указанием файлов или команд. Не утверждай, что исправил код: только объясни решение.'
         : userQuery;
-      const answer = await askgemini(request, projectArchitecture, terminalLogs);
+      const answer = await askgemini(request, projectArchitecture, terminalLogs, currentModel);
       console.log(chalk.cyan(`\n${answer}\n`));
     } catch (error) {
       console.error(chalk.red(`\n${error.message}\n`));
