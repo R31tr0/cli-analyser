@@ -8,6 +8,7 @@ import { scanProject } from './utils/scanner.js';
 import { runCommandAndCollectLogs } from './utils/logscanner.js';
 import chalk from 'chalk';
 import { randomColor } from './utils/geminicolor.js';
+import { withSpinner } from './ui/spinners.js';
 
 
 // ---------- Параметры ----------
@@ -213,10 +214,13 @@ async function main() {
     ].filter(Boolean).join('\n\n');
 
     try {
-      const answer = await askgemini(
-        'Автоматически проанализируй вывод запущенной команды. Найди ошибки, объясни их причины и предложи конкретные шаги исправления.',
-        scanProject(),
-        terminalLogs,
+      const answer = await withSpinner(
+        () => askgemini(
+          'Автоматически проанализируй вывод запущенной команды. Найди ошибки, объясни их причины и предложи конкретные шаги исправления.',
+          scanProject(),
+          terminalLogs,
+        ),
+        'Анализирую вывод команды...',
       );
       console.log(chalk.cyan(`\n${answer}\n`));
     } catch (error) {
@@ -275,7 +279,6 @@ async function main() {
       continue;
     }
 
-    console.log(chalk.green(`\n  думаем : "${userQuery}"...\n`));
     try {
       const projectArchitecture = scanProject();
       let terminalLogs = '';
@@ -286,7 +289,10 @@ async function main() {
       const isFixRequest = ['-fix', '-f'].includes(commandOption);
 
       if (isLogsRequest || isFixRequest) {
-        const runCommand = await suggestRunCommand(projectArchitecture, userQuery, currentModel);
+        const runCommand = await withSpinner(
+          () => suggestRunCommand(projectArchitecture, userQuery, currentModel),
+          'Подбираю команду запуска...',
+        );
 
         console.log(chalk.yellow(`ИИ предлагает перезапустить проект командой:\n\n  ${runCommand}\n`));
         console.log(chalk.gray('Команда будет выполнена в текущей папке проекта. Проверь её перед подтверждением.'));
@@ -310,7 +316,10 @@ async function main() {
       const request = isFixRequest
         ? 'Проанализируй логи повторного запуска и структуру проекта. Если приложение падает или команда завершается с ошибкой, найди первопричину и дай конкретные шаги, как исправить её, с указанием файлов или команд. Не утверждай, что исправил код: только объясни решение.'
         : userQuery;
-      const answer = await askgemini(request, projectArchitecture, terminalLogs, currentModel);
+      const answer = await withSpinner(
+        () => askgemini(request, projectArchitecture, terminalLogs, currentModel),
+        'Анализирую запрос...',
+      );
       console.log(chalk.cyan(`\n${answer}\n`));
     } catch (error) {
       console.error(chalk.red(`\n${error.message}\n`));
