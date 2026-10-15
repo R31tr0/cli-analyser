@@ -9,6 +9,7 @@ import { runCommandAndCollectLogs } from './utils/logscanner.js';
 import chalk from 'chalk';
 import { randomColor } from './utils/geminicolor.js';
 import { withSpinner } from './ui/spinners.js';
+import { initializeStorage } from './localanalyse/storage.js';
 
 
 // ---------- Параметры ----------
@@ -232,6 +233,12 @@ async function main() {
     return;
   }
 
+  try {
+    await initializeStorage();
+  } catch (error) {
+    console.error(chalk.red(`[LocalAnalysis] ${error.message}`));
+  }
+
   if (!hasApiKey()) {
     await showApiScreen();
   }
@@ -286,9 +293,8 @@ async function main() {
       const [commandName] = userQuery.trim().split(/\s+/);
       const commandOption = commandName.toLowerCase();
       const isLogsRequest = ['-log', '-logs', '-l'].includes(commandOption);
-      const isFixRequest = ['-fix', '-f'].includes(commandOption);
 
-      if (isLogsRequest || isFixRequest) {
+      if (isLogsRequest) {
         const runCommand = await withSpinner(
           () => suggestRunCommand(projectArchitecture, userQuery, currentModel),
           'Подбираю команду запуска...',
@@ -313,11 +319,8 @@ async function main() {
         ].filter(Boolean).join('\n\n');
       }
 
-      const request = isFixRequest
-        ? 'Проанализируй логи повторного запуска и структуру проекта. Если приложение падает или команда завершается с ошибкой, найди первопричину и дай конкретные шаги, как исправить её, с указанием файлов или команд. Не утверждай, что исправил код: только объясни решение.'
-        : userQuery;
       const answer = await withSpinner(
-        () => askgemini(request, projectArchitecture, terminalLogs, currentModel),
+        () => askgemini(userQuery, projectArchitecture, terminalLogs, currentModel),
         'Анализирую запрос...',
       );
       console.log(chalk.cyan(`\n${answer}\n`));
