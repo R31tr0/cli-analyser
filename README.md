@@ -27,6 +27,11 @@ In interactive mode, you can ask regular questions about code or use commands:
 | `-log`, `-logs`, or `-l` | Suggest a command to run, ask for confirmation, run it, and send its output to Gemini |
 | `-m` or `-model` | Show the model list; enter `-m <name or ID>` to select one |
 | `-help` or `-h` | Show the available help |
+| `-localcheck`| The command initiates a full local comparison of the entire project (in earlier versions this was the default, but now it is an option).|
+
+> **Important:** `-localcheck` may trigger many Gemini requests in a large project. A configured Google API key and access to Gemini are required for comparison. Run this command when you want to perform a full legacy-code check.
+
+
 
 ### `-scan` — on-demand architecture analysis
 
@@ -46,7 +51,10 @@ In short: `-scan` is not the same as the local scanner: the regular scan sends G
 
 The goal of local analysis is to help find possible duplication and legacy code that can easily be missed in a large project. The parser builds a function table, and the comparator selects structurally similar pairs for additional checking.
 
-In interactive mode, when the CLI starts, it scans the project, parses supported source files through `web-tree-sitter`, and saves a function table to `.dev-tools-cache.json` in the project root. The scanner then watches for file changes. After a source file is saved, the table is rebuilt, and changed functions are compared with other functions in the project.
+In interactive mode, when the CLI starts, it scans the project, parses supported source files through `web-tree-sitter`, and saves a function table to `.dev-tools-cache.json` in the project root. Initialization only builds the table; function pairs are not automatically compared, saving tokens and processing time. Use `-localcheck` in interactive mode to run a full project check and compare all function pairs for legacy or duplicate code.
+
+> **Important:** `-localcheck` may trigger many Gemini requests in a large project. A configured Google API key and access to Gemini are required for comparison. Run this command when you want to perform a full legacy-code check.
+
 
 For each recognized function, the parser collects:
 
@@ -77,14 +85,11 @@ $$
 
 The result ranges from `0` to `1`. `0` means there are no shared features, while `1` means the feature sets are identical. The `0.5` threshold is a **structural filter for selecting candidates**, not a 50-percent probability that the functions have the same purpose: the formula does not understand code meaning.
 
-- If the cache is empty, all unique function pairs are iterated over.
-- In subsequent scans, pairs are considered if at least one function is new or its `hash` has changed.
 - If a pair's coefficient is equal to or greater than `0.5`, Gemini receives the function names and paths, comparison instructions, and the source code of both functions.
 - Gemini's response is printed in the terminal if it begins with “Yes”. “No” responses are not displayed.
 
 Changing one function can produce many candidates: it is compared with each other function, but the coefficient is calculated independently for each pair. A deleted function is removed from the next table, but no separate comparison is run for deleted functions.
 
-> **Important:** On the first run in a large project, there may be many pairs and Gemini requests. A configured Google API key and access to Gemini are required for analysis. If the key or network is unavailable, the comparison request will fail; the function table will still be saved. After that, unchanged pairs will not be checked again automatically. To repeat the full analysis, delete `.dev-tools-cache.json` and restart the CLI.
 
 ### Supported extensions
 
@@ -155,7 +160,7 @@ The CLI provides:
 
 ## Request limits and accuracy
 
-The local parser analyzes project files without sending source code to Gemini. The model is called only for function pairs that pass the structural Jaccard filter; the request includes the code of those two functions, their names and paths, and a short comparison instruction. This limits the amount of data sent and token usage, but does not eliminate them: on the first run, all function pairs are compared, and a large number of functions may produce many qualifying pairs. In subsequent scans, only pairs involving a new or changed function are checked.
+The local parser analyzes project files without sending source code to Gemini. Function pairs are not compared automatically. Gemini is called only during `-localcheck`, and only for pairs that pass the structural Jaccard filter; the request includes the code of those two functions, their names and paths, and a short comparison instruction.
 
 The Jaccard coefficient is only a preliminary filter, not the probability that Gemini is correct. The accuracy of the model's responses has not been measured as a percentage for this project, so a reliable hit rate cannot be stated. Gemini can be wrong and say that functions perform the same task when they do not, or vice versa. You should verify the result yourself.
 
@@ -183,8 +188,9 @@ CLI Code Analyser — консольный помощник разработчи
 | `-log`, `-logs` или `-l` | Предложить команду запуска, запросить подтверждение, запустить её и передать вывод Gemini |
 | `-m` или `-model` | Показать список моделей; для выбора ввести `-m <название или ID>` |
 | `-help` или `-h` | Показать доступную справку |
+| `-localcheck`| команда запускает полное локальное сравнение всего проекта (в ранних версиях была по умолчанию сейчас это опция ) |
 
-
+> **Важно:** команда `-localcheck` может вызвать много запросов к Gemini в большом проекте. Для сравнения нужен настроенный Google API key и доступ к Gemini. Запускайте команду, когда нужна полная проверка проекта на легаси-код.
 
 ### `-scan` — анализ архитектуры по запросу
 
@@ -206,7 +212,12 @@ CLI Code Analyser — консольный помощник разработчи
 
 Цель локального анализа — помогать находить возможное дублирование и легаси-код, которые легко пропустить в большом проекте. Парсер строит таблицу функций, а компаратор отбирает структурно похожие пары для дополнительной проверки.
 
-В интерактивном режиме при старте CLI сканирует проект, разбирает поддерживаемые исходные файлы через `web-tree-sitter` и сохраняет таблицу функций в `.dev-tools-cache.json` в корне проекта. Затем сканер следит за изменениями файлов. После сохранения исходника таблица пересобирается, а изменившиеся функции сравниваются с другими функциями проекта.
+В интерактивном режиме при старте CLI сканирует проект, разбирает поддерживаемые исходные файлы через `web-tree-sitter` и сохраняет таблицу функций в `.dev-tools-cache.json` в корне проекта. При инициализации создаётся только таблица: автоматическое сравнение пар отключено для экономии токенов и повышения производительности. Команда `-localcheck` запускает полную проверку проекта и сравнивает все пары функций для поиска легаси- или дублирующегося кода.
+новые функции сверяются автоматически 
+
+
+> **Важно:** команда `-localcheck` может вызвать много запросов к Gemini в большом проекте. Для сравнения нужен настроенный Google API key и доступ к Gemini. Запускайте команду, когда нужна полная проверка проекта на легаси-код.
+
 
 Для распознанной функции парсер собирает:
 
@@ -236,14 +247,11 @@ $$
 
 Результат находится от `0` до `1`. `0` означает, что общих признаков нет, а `1` — что наборы признаков совпадают. Порог `0.5` означает **структурный фильтр для отбора кандидатов**, а не 50-процентную вероятность одинакового назначения: формула не понимает смысл кода.
 
-- При пустом кэше перебираются все уникальные пары функций.
-- При последующих сканированиях рассматриваются пары, в которых хотя бы одна функция новая или её `hash` изменился.
 - Если коэффициент пары равен или выше `0.5`, Gemini получает имена и пути функций, инструкцию сравнения и исходный код обеих функций.
 - В терминал выводится ответ Gemini, начинающийся с «Да». Ответы «Нет» не показываются.
 
 Изменение одной функции может создать много кандидатов: она сравнивается с каждой другой функцией, но коэффициент вычисляется независимо для каждой пары. Удалённая функция убирается из следующей таблицы, но отдельное сравнение для неё не запускается.
 
-> **Важно:** на первом запуске в большом проекте может быть много пар и запросов к Gemini. Для анализа нужен настроенный Google API key и доступ к Gemini. Если ключ или сеть недоступны, запрос сравнения завершится ошибкой; таблица функций всё равно сохраняется. После этого неизменившиеся пары не будут повторно проверены автоматически. Чтобы повторить полный анализ, удалите `.dev-tools-cache.json` и перезапустите CLI.
 
 ### Поддерживаемые расширения
 
@@ -314,7 +322,5 @@ cli-analyser run npm test
 - Gemini 3.7 Flash
 
 ## Лимиты запросов и точность
-
-Локальный парсер анализирует файлы проекта без отправки исходников Gemini. Модель вызывается только для пар функций, прошедших структурный фильтр Жаккара; в запрос включаются код этих двух функций, их имена и пути, а также короткая инструкция сравнения. Это ограничивает объём передаваемых данных и расход токенов, но не исключает их полностью: на первом запуске сравниваются все пары функций, и при большом количестве функций подходящих пар может быть много. На последующих сканированиях проверяются только пары с новой или изменённой функцией.
 
 Коэффициент Жаккара — только предварительный фильтр, а не вероятность того, что Gemini прав. Точность ответов модели в процентах для этого проекта не измерялась, поэтому достоверный процент попадания назвать нельзя. Gemini может ошибиться и сказать, что функции выполняют одну задачу, хотя это не так, или наоборот. Результат следует проверять самостоятельно.

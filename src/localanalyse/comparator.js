@@ -37,10 +37,9 @@ export function jaccardSimilarity(firstFunction, secondFunction) {
   return union === 0 ? 0 : intersection / union;
 }
 
-// Сравнивает все пары при пустом кэше, иначе  только пары с измененным хешем.
-export async function compareFunctionTables(currentFunctions, previousFunctions = {}) {
+// Сравнивает новые или измененные функции со всеми остальными; fullScan включает все пары.
+export async function compareFunctionTables(currentFunctions, previousFunctions = {}, { fullScan = false } = {}) {
   const functionEntries = Object.entries(currentFunctions);
-  const isFirstRun = Object.keys(previousFunctions).length === 0;
   const changedKeys = new Set(
     functionEntries
       .filter(([key, currentFunction]) =>
@@ -51,13 +50,13 @@ export async function compareFunctionTables(currentFunctions, previousFunctions 
   const comparedPairs = new Set();
   const legacyPairs = [];
 
-  // Обходит уникальные пары и пропускает неизмененные функции после первого запуска.
+  // Обходит уникальные пары; обычный режим включает пары с новой или измененной функцией.
   for (let firstIndex = 0; firstIndex < functionEntries.length; firstIndex += 1) {
     for (let secondIndex = firstIndex + 1; secondIndex < functionEntries.length; secondIndex += 1) {
       const [firstKey, firstFunction] = functionEntries[firstIndex];
       const [secondKey, secondFunction] = functionEntries[secondIndex];
 
-      if (!isFirstRun && !changedKeys.has(firstKey) && !changedKeys.has(secondKey)) continue;
+      if (!fullScan && !changedKeys.has(firstKey) && !changedKeys.has(secondKey)) continue;
 
       const similarity = jaccardSimilarity(firstFunction, secondFunction);
       if (similarity < 0.5) continue;

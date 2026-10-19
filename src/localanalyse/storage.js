@@ -62,18 +62,15 @@ export async function initializeStorage(rootPath = process.cwd()) {
   let debounceTimer;
   let scanQueue = Promise.resolve();
 
-  // Пересобирает таблицу из текущего состояния файлов проекта.
-  function rescan() {
+  // Обновляет снимок функций и при необходимости сравнивает их.
+  function rescan({ compare = true, fullScan = false } = {}) {
     scanQueue = scanQueue.catch(() => {}).then(async () => {
       const files = scanProjectFiles(rootPath);
       const allFunctions = await parseProject(files);
 
-      // Сравнивает с сохраненным снимком до записи новой таблицы.
-      const previousFunctions = loadStorage(cachePath);
-      try {
-        await compareFunctionTables(allFunctions, previousFunctions);
-      } catch (error) {
-        console.error(`[LocalAnalysis] Не удалось сравнить функции через Gemini: ${error.message}`);
+      if (compare) {
+        const previousFunctions = loadStorage(cachePath);
+        await compareFunctionTables(allFunctions, previousFunctions, { fullScan });
       }
 
       updateStorage(allFunctions, cachePath);
@@ -92,12 +89,16 @@ export async function initializeStorage(rootPath = process.cwd()) {
   }, rootPath);
 
   try {
-    await rescan();
+    // Начальный снимок становится базой; полный анализ запускается явно через -localcheck.
+    await rescan({ compare: false });
   } catch (error) {
     console.error(`[LocalAnalysis] Не удалось выполнить начальное сканирование: ${error.message}`);
   }
 
   return {
+    localCheck() {
+      return rescan({ fullScan: true });
+    },
     close() {
       clearTimeout(debounceTimer);
       watcher.close();

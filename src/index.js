@@ -233,8 +233,9 @@ async function main() {
     return;
   }
 
+  let localStorage;
   try {
-    await initializeStorage();
+    localStorage = await initializeStorage();
   } catch (error) {
     console.error(chalk.red(`[LocalAnalysis] ${error.message}`));
   }
@@ -283,6 +284,31 @@ async function main() {
 
       currentModel = selectedModel.id;
       console.log(chalk.green(`\nВыбрана модель: ${selectedModel.label} (${currentModel})\n`));
+      continue;
+    }
+
+    if (userQuery.trim().toLowerCase() === '-localcheck') {
+      if (!localStorage) {
+        console.error(chalk.red('\nЛокальный анализ недоступен: не удалось инициализировать сканер.\n'));
+        continue;
+      }
+
+      try {
+        console.log(chalk.yellow('\n это запустит полную проверку всех пар функций вы уверены что хотите продолжить ? (если проект большой лимиты быстро утекут ) y/n\n'));
+        if (!await confirmCommand()) {
+          console.log(chalk.gray('\nПолная проверка отменена.\n'));
+          continue;
+        }
+        const { comparedPairs, legacyPairs } = await withSpinner(
+          () => localStorage.localCheck(),
+          'Выполняю полную проверку всех пар функций...',
+        );
+        console.log(chalk.green(
+          `\nПолная проверка завершена. Проверено пар: ${comparedPairs}; совпадений задач: ${legacyPairs.length}.\n`
+        ));
+      } catch (error) {
+        console.error(chalk.red(`\nНе удалось выполнить полную локальную проверку: ${error.message}\n`));
+      }
       continue;
     }
 

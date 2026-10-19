@@ -5,5 +5,3 @@ export function randomColor() {
         return colors [randomIndex];  
   };
 
-
-
