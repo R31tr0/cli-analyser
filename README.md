@@ -160,8 +160,6 @@ The CLI provides:
 
 ## Request limits and accuracy
 
-The local parser analyzes project files without sending source code to Gemini. Function pairs are not compared automatically. Gemini is called only during `-localcheck`, and only for pairs that pass the structural Jaccard filter; the request includes the code of those two functions, their names and paths, and a short comparison instruction.
-
 The Jaccard coefficient is only a preliminary filter, not the probability that Gemini is correct. The accuracy of the model's responses has not been measured as a percentage for this project, so a reliable hit rate cannot be stated. Gemini can be wrong and say that functions perform the same task when they do not, or vice versa. You should verify the result yourself.
 
 <a id="russian"></a>
