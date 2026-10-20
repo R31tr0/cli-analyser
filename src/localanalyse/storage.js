@@ -61,12 +61,14 @@ export async function initializeStorage(rootPath = process.cwd()) {
   const cachePath = path.join(rootPath, DEFAULT_CACHE_FILE);
   let debounceTimer;
   let scanQueue = Promise.resolve();
+  let functionCount = 0;
 
   // Обновляет снимок функций и при необходимости сравнивает их.
   function rescan({ compare = true, fullScan = false } = {}) {
     scanQueue = scanQueue.catch(() => {}).then(async () => {
       const files = scanProjectFiles(rootPath);
       const allFunctions = await parseProject(files);
+      functionCount = Object.keys(allFunctions).length;
 
       if (compare) {
         const previousFunctions = loadStorage(cachePath);
@@ -96,6 +98,9 @@ export async function initializeStorage(rootPath = process.cwd()) {
   }
 
   return {
+    get functionCount() {
+      return functionCount;
+    },
     localCheck() {
       return rescan({ fullScan: true });
     },

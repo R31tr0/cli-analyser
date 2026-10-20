@@ -234,8 +234,10 @@ async function main() {
   }
 
   let localStorage;
+  let countfunctions = 0;
   try {
     localStorage = await initializeStorage();
+    countfunctions = localStorage.functionCount;
   } catch (error) {
     console.error(chalk.red(`[LocalAnalysis] ${error.message}`));
   }
@@ -294,7 +296,8 @@ async function main() {
       }
 
       try {
-        console.log(chalk.yellow('\n это запустит полную проверку всех пар функций вы уверены что хотите продолжить ? (если проект большой лимиты быстро утекут ) y/n\n'));
+        console.log(chalk.yellow(`\n это запустит полную проверку всех пар функций вы уверены что хотите продолжить ? всего функций  ${countfunctions} (если проект большой лимиты быстро утекут ) y/n\n`));
+        console.log(chalk.red('⚠️ Внимание: Убедитесь, что у вас достаточно лимитов API.иначе проверка упадет с ошибкой  функция авто переключения пока модели не доступна \n'));
         if (!await confirmCommand()) {
           console.log(chalk.gray('\nПолная проверка отменена.\n'));
           continue;
